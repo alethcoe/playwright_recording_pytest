@@ -19,9 +19,9 @@ def browser_context_args(browser_context_args, video_path):
     return {
         **browser_context_args,
         "record_video_dir": video_path,
-         "viewport": {
+        "viewport": {
             "width": 1920,
-            "height": 1080,
+            "height": 1080
         }
     }
 
@@ -31,15 +31,30 @@ def video_path():
 
 def pytest_sessionstart(session):
     """
-    Called after whole test run finished, right before
-    returning the exit status to the system.
+    Called before test run starts
     """
-    for filename in os.listdir("./videos"):
-        filepath = os.path.join("./videos", filename)
-        try:
-            shutil.rmtree(filepath)
-        except OSError:
-            os.remove(filepath)
+    if os.path.exists("./videos"):
+        for filename in os.listdir("./videos"):
+            filepath = os.path.join("./videos", filename)
+            try:
+                shutil.rmtree(filepath)
+            except OSError:
+                os.remove(filepath)
+
+@pytest.fixture
+def page(context: BrowserContext, base_url: str) -> Generator[Page, None, None]:
+    page = context.new_page()
+    page._goto = page.goto  # type: ignore
+    page.goto = lambda *args, **kwargs: _handle_page_goto(  # type: ignore
+        page, list(args), kwargs, base_url
+    )
+    yield page
+
+    #save off the test unique id
+    current_path_name = context.pages[0].video.path().name
+    BrowserContext.current_video_name = current_path_name
+
+    page.close()
 
 @pytest.fixture
 def context(
@@ -57,22 +72,6 @@ def context(
         #test should have been successful no real reason to keep it
         os.remove(updated_video_path)
 
-
-@pytest.fixture
-def page(context: BrowserContext, base_url: str) -> Generator[Page, None, None]:
-    page = context.new_page()
-    page._goto = page.goto  # type: ignore
-    page.goto = lambda *args, **kwargs: _handle_page_goto(  # type: ignore
-        page, list(args), kwargs, base_url
-    )
-    yield page
-
-    #save off the test unique id
-    current_path_name = context.pages[0].video.path().name
-    BrowserContext.current_video_name = current_path_name
-
-    page.close()
-
 def _handle_page_goto(
     page: Page, args: List[Any], kwargs: Dict[str, Any], base_url: str
 ) -> None:
@@ -80,8 +79,3 @@ def _handle_page_goto(
     if not (url.startswith("http://") or url.startswith("https://")):
         url = base_url + url
     return page._goto(url, *args, **kwargs)  # type: ignore
-
-
-
-
-
