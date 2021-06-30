@@ -1,8 +1,9 @@
 import asyncio
 from asyncio import AbstractEventLoop
 from typing import Any, Callable, Dict, Generator, List, Optional
-
+import os
 import pytest
+
 from playwright.sync_api import (
     Browser,
     BrowserContext,
@@ -51,7 +52,7 @@ def page(context: BrowserContext, base_url: str) -> Generator[Page, None, None]:
     yield page
 
     #save off the test unique id
-    current_path_name = context.pages[0].video.path().name
+    current_path_name = os.path.split(context.pages[0].video.path())[1]
     BrowserContext.current_video_name = current_path_name
 
     page.close()
